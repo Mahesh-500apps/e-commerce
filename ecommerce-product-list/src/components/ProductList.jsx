@@ -1,79 +1,91 @@
 import React from "react";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import "./ProductList.css";
+import { Draggable } from "react-beautiful-dnd";
+import StrictModeDroppable from "./StrictModeDroppable";
 
-const ProductList = ({ products, setProducts, openPicker }) => {
-  console.log(products, "products");
-
-  const handleOnDragEnd = (result) => {
-    if (!result.destination) return;
-
-    const reorderedProducts = Array.from(products);
-    const [movedProduct] = reorderedProducts.splice(result.source.index, 1);
-    reorderedProducts.splice(result.destination.index, 0, movedProduct);
-    setProducts(reorderedProducts);
+const ProductList = ({ products, onEdit, setProducts }) => {
+  // Remove the entire product
+  const removeProduct = (index) => {
+    const updated = [...products];
+    updated.splice(index, 1);
+    setProducts(updated);
   };
 
-  const removeProduct = (index) => {
-    const updatedProducts = products.filter((_, i) => i !== index);
-    setProducts(updatedProducts);
+  // Remove a specific variant
+  const removeVariant = (productIndex, variantIndex) => {
+    const updated = [...products];
+    updated[productIndex].variants.splice(variantIndex, 1);
+    if (updated[productIndex].variants.length === 0) {
+      // Remove product if no variants left
+      updated.splice(productIndex, 1);
+    }
+    setProducts(updated);
   };
 
   return (
-    <DragDropContext onDragEnd={handleOnDragEnd}>
-      <Droppable droppableId="products">
-        {(provided) => (
-          <ul
-            {...provided.droppableProps}
-            ref={provided.innerRef}
-            className="product-list"
-          >
-            {products.map((product, index) => (
-              <Draggable
-                key={product.id}
-                draggableId={String(product.id)}
-                index={index}
-              >
-                {(provided) => (
-                  <li
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className="product-item"
-                  >
-                    <div>
-                      <strong>{product.title || "Unnamed Product"}</strong>
-                      {product.variants && product.variants.length > 0 && (
-                        <ul>
-                          {product.variants.map((variant) => (
-                            <li key={variant.id}>
-                              <span
-                                style={{
-                                  textDecoration: variant.selected
-                                    ? "underline"
-                                    : "none",
-                                }}
-                              >
-                                {variant.title} - ${variant.price}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+    <StrictModeDroppable droppableId="productList">
+      {(provided) => (
+        <div
+          className="product-list"
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+        >
+          {products.map((product, index) => (
+            <Draggable
+              key={product.id}
+              draggableId={product.id.toString()}
+              index={index}
+            >
+              {(provided) => (
+                <div
+                  className="product-item"
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                >
+                  <img
+                    className="product-image"
+                    src={product.image.src}
+                    alt={product.title}
+                  />
+                  <div className="product-details">
+                    <h2>{product.title || "New Product"}</h2>
+                    <div className="product-variants">
+                      {product.variants.map((variant, i) => (
+                        <div className="variant" key={i}>
+                          <span>{variant.title}</span> -{" "}
+                          <span>${variant.price}</span>
+                          <button
+                            className="remove-btn variant-remove"
+                            onClick={() => removeVariant(index, i)}
+                          >
+                            X
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <button onClick={() => openPicker(index)}>Edit</button>
-                    {products.length > 1 && (
-                      <button onClick={() => removeProduct(index)}>X</button>
-                    )}
-                  </li>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </ul>
-        )}
-      </Droppable>
-    </DragDropContext>
+                    <div className="product-actions">
+                      <button
+                        className="edit-btn"
+                        onClick={() => onEdit(index)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="remove-btn"
+                        onClick={() => removeProduct(index)}
+                      >
+                        Remove Product
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Draggable>
+          ))}
+          {provided.placeholder}
+        </div>
+      )}
+    </StrictModeDroppable>
   );
 };
 

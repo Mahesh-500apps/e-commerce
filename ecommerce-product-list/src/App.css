@@ -1,15 +1,124 @@
-.App {
-  font-family: Arial, sans-serif;
-  text-align: center;
+.app-container {
+  max-width: 900px;
+  margin: 0 auto;
   padding: 20px;
 }
 
-button {
-  margin-top: 10px;
-  padding: 10px 15px;
-  background-color: #007bff;
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.add-product-btn {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 20px;
+  background-color: #4CAF50;
   color: white;
   border: none;
-  border-radius: 5px;
   cursor: pointer;
+  border-radius: 5px;
 }
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.product-item {
+  display: flex;
+  gap: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.product-image {
+  width: 10px;
+  height: 10px;
+  object-fit:none;
+  border-radius: 8px;
+}
+
+.product-details {
+  flex-grow: 1;
+}
+
+.product-variants {
+  margin-top: 10px;
+}
+
+.variant {
+  margin-bottom: 5px;
+}
+
+.product-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.edit-btn, .remove-btn {
+  padding: 5px 10px;
+  border: none;
+  background-color: #007BFF;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.remove-btn {
+  background-color: #DC3545;
+}
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 30px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  width: 900px;
+}
+
+.search-bar {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.product-picker-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.picker-product-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.confirm-btn {
+  padding: 10px 20px;
+  margin-top: 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+input[type="checkbox"]:indeterminate {
+  background-color: #f0ad4e;
+  border: 1px solid #f0ad4e;
+}
+

@@ -1,183 +1,163 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const ProductPicker = ({ onClose, updateProducts }) => {
+const ProductPicker = ({ onClose, initialSelectedProducts = [] }) => {
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [search, setSearch] = useState("");
+  const [selectedProducts, setSelectedProducts] = useState(
+    initialSelectedProducts
+  );
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get(
-          `/task/products/search?search=${searchTerm}&page=${page}&limit=1`,
-          {
-            headers: {
-              "x-api-key": "72njgfa948d9aS7gs5", // Your API key here
-            },
-          }
-        );
-
-        if (Array.isArray(response.data)) {
-          setProducts((prev) => [...prev, ...response.data]);
-        } else {
-          console.error("Unexpected response format:", response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
-    };
-
-    fetchProducts();
-  }, [page, searchTerm]);
-
-  const handleScroll = (e) => {
-    if (e.target.scrollTop + e.target.clientHeight >= e.target.scrollHeight) {
-      setPage((prev) => prev + 1);
-    }
-  };
-
-  const handleSelect = (product) => {
-    const isSelected = selectedProducts.some(
-      (id) =>
-        id === product.id ||
-        product.variants.some((variant) => variant.id === id)
+  // Load products (with pagination and search)
+  const loadProducts = async () => {
+    const response = await axios.get(
+      `task/products/search?search=${search}&page=${page}&limit=10`,
+      { headers: { "x-api-key": "72njgfa948d9aS7gs5" } }
     );
-
-    if (isSelected) {
-      setSelectedProducts((prev) => {
-        const newSelection = prev.filter((id) => id !== product.id);
-        product.variants.forEach((variant) => {
-          if (newSelection.includes(variant.id)) {
-            newSelection.splice(newSelection.indexOf(variant.id), 1);
-          }
-        });
-        return newSelection;
-      });
-    } else {
-      setSelectedProducts((prev) => {
-        const newSelection = [...prev, product.id];
-        product.variants.forEach((variant) => {
-          newSelection.push(variant.id);
-        });
-        return newSelection;
-      });
-    }
-  };
-
-  const handleVariantSelect = (variantId) => {
-    setSelectedProducts((prev) => {
-      if (prev.includes(variantId)) {
-        return prev.filter((id) => id !== variantId); // Deselect
-      } else {
-        return [...prev, variantId]; // Select
-      }
-    });
-  };
-
-  const handleSave = () => {
-    const selectedProductDetails = products.filter(
-      (product) =>
-        selectedProducts.includes(product.id) ||
-        product.variants.some((variant) =>
-          selectedProducts.includes(variant.id)
+    const newProducts = response.data.filter(
+      (newProduct) =>
+        !selectedProducts.some(
+          (existingProduct) => existingProduct.id === newProduct.id
         )
     );
-
-    // Prepare final products to be sent back
-    const finalProducts = selectedProductDetails.map((product) => {
-      return {
-        id: product.id,
-        title: product.title,
-        variants: product.variants.filter((variant) =>
-          selectedProducts.includes(variant.id)
-        ),
-      };
-    });
-
-    // Send only the relevant data
-    updateProducts(finalProducts);
-    onClose();
+    setProducts((prev) => [...prev, ...newProducts]);
   };
 
-  const isProductSelected = (productId) => selectedProducts.includes(productId);
-  const isVariantSelected = (variantId) => selectedProducts.includes(variantId);
+  useEffect(() => {
+    loadProducts();
+  }, [page, search]);
+
+  // Handle product selection/deselection
+  const handleProductSelect = (product) => {
+    const isSelected = selectedProducts.some((p) => p.id === product.id);
+    if (isSelected) {
+      setSelectedProducts((prev) => prev.filter((p) => p.id !== product.id));
+    } else {
+      const productWithAllVariants = {
+        ...product,
+        variants: product.variants.map((v) => ({ ...v, selected: true })),
+      };
+      setSelectedProducts([...selectedProducts, productWithAllVariants]);
+    }
+  };
+
+  // Handle variant selection/deselection within a product
+  const handleVariantSelect = (product, variantIndex) => {
+    const selectedProduct = selectedProducts.find((p) => p.id === product.id);
+
+    if (selectedProduct) {
+      const updatedVariants = selectedProduct.variants.map((variant, i) => {
+        if (i === variantIndex) {
+          return { ...variant, selected: !variant.selected };
+        }
+        return variant;
+      });
+
+      const isAnyVariantSelected = updatedVariants.some((v) => v.selected);
+
+      if (isAnyVariantSelected) {
+        // If any variant is selected, update the product with the new variant state
+        const updatedProduct = {
+          ...selectedProduct,
+          variants: updatedVariants,
+        };
+        setSelectedProducts(
+          selectedProducts.map((p) =>
+            p.id === product.id ? updatedProduct : p
+          )
+        );
+      } else {
+        // If no variant is selected, remove the product from the selection
+        setSelectedProducts(
+          selectedProducts.filter((p) => p.id !== product.id)
+        );
+      }
+    } else {
+      // Select the product with only the selected variant
+      const newProduct = {
+        ...product,
+        variants: product.variants.map((v, i) => ({
+          ...v,
+          selected: i === variantIndex,
+        })),
+      };
+      setSelectedProducts([...selectedProducts, newProduct]);
+    }
+  };
+
+  // Determine if all variants of a product are selected
+  const isProductFullySelected = (product) => {
+    const selectedProduct = selectedProducts.find((p) => p.id === product.id);
+    return (
+      selectedProduct &&
+      selectedProduct.variants.every((variant) => variant.selected)
+    );
+  };
+
+  // Determine if some variants of a product are selected
+  const isProductPartiallySelected = (product) => {
+    const selectedProduct = selectedProducts.find((p) => p.id === product.id);
+    return (
+      selectedProduct &&
+      selectedProduct.variants.some((variant) => variant.selected) &&
+      !isProductFullySelected(product)
+    );
+  };
 
   return (
-    <div
-      style={{
-        overflowY: "auto",
-        maxHeight: "300px",
-        border: "1px solid #ccc",
-        padding: "10px",
-      }}
-      onScroll={handleScroll}
-    >
+    <div className="modal">
+      <h2>Select Products</h2>
       <input
+        className="search-bar"
         type="text"
-        placeholder="Search products"
-        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Search products..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
       />
-      {products.map((product) => (
-        <div key={product.id} style={{ marginBottom: "15px" }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
+      <div
+        className="product-picker-list"
+        onScroll={(e) => {
+          if (
+            e.target.scrollHeight - e.target.scrollTop ===
+            e.target.clientHeight
+          ) {
+            setPage(page + 1);
+          }
+        }}
+      >
+        {products.map((product) => (
+          <div className="picker-product-item" key={product.id}>
             <input
               type="checkbox"
-              checked={
-                isProductSelected(product.id) ||
-                product.variants.some((variant) =>
-                  isVariantSelected(variant.id)
-                )
-              }
-              onChange={() => handleSelect(product)}
+              checked={isProductFullySelected(product)}
+              indeterminate={isProductPartiallySelected(product)}
+              onChange={() => handleProductSelect(product)}
             />
-            <span
-              style={{
-                fontWeight: isProductSelected(product.id) ? "bold" : "normal",
-              }}
-            >
-              {isProductSelected(product.id) &&
-              !product.variants.every((variant) =>
-                isVariantSelected(variant.id)
-              )
-                ? "-"
-                : ""}{" "}
-              {product.title}
-            </span>
-            <img
-              src={product.image.src}
-              alt={product.title}
-              style={{ width: "50px", marginLeft: "10px" }}
-            />
+            <img src={product.image.src} alt={product.title} style={{height:"2px", width:"2px"}} />
+            <span>{product.title}</span>
+            <div className="product-variants">
+              {product.variants.map((variant, i) => (
+                <div className="variant-item" key={i}>
+                  <input
+                    type="checkbox"
+                    checked={selectedProducts.some(
+                      (p) => p.id === product.id && p.variants[i]?.selected
+                    )}
+                    onChange={() => handleVariantSelect(product, i)}
+                  />
+                  <span>
+                    {variant.title} - ${variant.price}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ paddingLeft: "20px", marginTop: "5px" }}>
-            {product.variants.map((variant) => (
-              <div
-                key={variant.id}
-                style={{ display: "flex", alignItems: "center" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isVariantSelected(variant.id)}
-                  onChange={() => handleVariantSelect(variant.id)}
-                />
-                <span
-                  style={{
-                    textDecoration: isVariantSelected(variant.id)
-                      ? "underline"
-                      : "none",
-                  }}
-                >
-                  {variant.title} - ${variant.price}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-      <button onClick={handleSave}>Save Selected</button>
-      <button onClick={onClose}>Close</button>
+        ))}
+      </div>
+      <button className="confirm-btn" onClick={() => onClose(selectedProducts)}>
+        Confirm
+      </button>
     </div>
   );
 };
